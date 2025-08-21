@@ -1,30 +1,11 @@
-param vmssName string = 'vmss-servernameapi'
-param location string = resourceGroup().location
+param vmssName string
+param location string
 param adminUsername string
 @secure()
 param adminPassword string
+param vmssSubnetId string
 
-resource vnet 'Microsoft.Network/virtualNetworks@2022-07-01' = {
-  name: '${vmssName}-vnet'
-  location: location
-  properties: {
-    addressSpace: {
-      addressPrefixes: [
-        '10.0.0.0/16'
-      ]
-    }
-    subnets: [
-      {
-        name: 'default'
-        properties: {
-          addressPrefix: '10.0.0.0/24'
-        }
-      }
-    ]
-  }
-}
-
-resource nsg 'Microsoft.Network/networkSecurityGroups@2022-07-01' = {
+resource nsg 'Microsoft.Network/networkSecurityGroups@2024-07-01' = {
   name: '${vmssName}-nsg'
   location: location
   properties: {
@@ -59,13 +40,13 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2022-07-01' = {
   }
 }
 
-resource vmss 'Microsoft.Compute/virtualMachineScaleSets@2022-11-01' = {
+resource vmss 'Microsoft.Compute/virtualMachineScaleSets@2024-11-01' = {
   name: vmssName
   location: location
   sku: {
     name: 'Standard_B1s'
     tier: 'Standard'
-    capacity: 3
+    capacity: 1
   }
   properties: {
     upgradePolicy: {
@@ -102,7 +83,7 @@ resource vmss 'Microsoft.Compute/virtualMachineScaleSets@2022-11-01' = {
                   name: 'ipconfig'
                   properties: {
                     subnet: {
-                      id: vnet.properties.subnets[0].id
+                      id: vmssSubnetId
                     }
                     loadBalancerBackendAddressPools: []
                   }
@@ -120,9 +101,8 @@ resource vmss 'Microsoft.Compute/virtualMachineScaleSets@2022-11-01' = {
   }
 }
 
-resource customScriptExt 'Microsoft.Compute/virtualMachineScaleSets/extensions@2022-11-01' = {
+resource customScriptExt 'Microsoft.Compute/virtualMachineScaleSets/extensions@2024-11-01' = {
   name: '${vmss.name}/CustomScriptExtension'
-  location: location
   properties: {
     publisher: 'Microsoft.Compute'
     type: 'CustomScriptExtension'
@@ -131,11 +111,12 @@ resource customScriptExt 'Microsoft.Compute/virtualMachineScaleSets/extensions@2
     settings: {
       fileUris: [
         // URL to your deployment script, e.g., a PowerShell script in Azure Storage or GitHub
-        'https://<your-storage-or-github-url>/deploy-servernameapi.ps1'
+        'https://raw.githubusercontent.com/oldilcaman/scripts-and-templates/refs/heads/main/azure/azure-services/vm-scale-sets/custom-script-extension/deploy-servernameapi.ps1'
       ]
       commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File deploy-servernameapi.ps1'
     }
   }
 }
 
+output vmss object = vmss
 output vmssId string = vmss.id
