@@ -9,20 +9,20 @@ try {
         $targetPid = Get-Content $pidFile
         try {
             Stop-Process -Id $targetPid -Force
-            Write-Output "✅ Process with ID $targetPid was successfully stopped."
+            Write-Output "Process with ID $targetPid was successfully stopped."
 
             # Delete the PID file
             Remove-Item $pidFile -Force
-            Write-Output "🗑️ PID file deleted."
+            Write-Output "PID file deleted."
 
         } catch {
-            Write-Output "⚠️Process with ID $targetPid could not be stopped. It may not exist or is already terminated."
+            Write-Output "Process with ID $targetPid could not be stopped. It may not exist or is already terminated."
         }
     } else {
-        Write-Output "📁 PID file not found. No process to stop."
+        Write-Output "PID file not found. No process to stop."
     }
 } catch {
-    Write-Output "❌ Unexpected error occurred whild trying to stop the process: $_"
+    Write-Output "Unexpected error occurred whild trying to stop the process: $_"
 }
 
 # Install .net
@@ -33,9 +33,9 @@ try {
     }
 
     if ($installedVersions -contains $targetVersion) {
-        Write-Output "✅ .NET SDK version $targetVersion is already installed. Skipping installation."
+        Write-Output ".NET SDK version $targetVersion is already installed. Skipping installation."
     } else {
-        Write-Output "📦 Installing .NET SDK version $targetVersion..."
+        Write-Output "Installing .NET SDK version $targetVersion..."
 
         $dotnetSdkInstaller = "https://builds.dotnet.microsoft.com/dotnet/Sdk/$targetVersion/dotnet-sdk-$targetVersion-win-x64.exe"
         $installerPath = "C:\dotnet-sdk-installer.exe"
@@ -43,13 +43,13 @@ try {
         try {
             Invoke-WebRequest -Uri $dotnetSdkInstaller -OutFile $installerPath -ErrorAction Stop
             Start-Process $installerPath -ArgumentList "/quiet" -Wait
-            Write-Output "✅ Installation of .NET SDK $targetVersion completed."
+            Write-Output "Installation of .NET SDK $targetVersion completed."
         } catch {
-            Write-Output "❌ Failed to download or install .NET SDK ${targetVersion}: $_"
+            Write-Output "Failed to download or install .NET SDK ${targetVersion}: $_"
         }
     }
 } catch {
-    Write-Output "⚠️ Unexpected error occurred: $_"
+    Write-Output "Unexpected error occurred: $_"
 }
 
 # Open the port in the firewall
@@ -58,7 +58,7 @@ try {
     $existingRule = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
 
     if ($null -eq $existingRule) {
-        Write-Output "🔐 Firewall rule '$ruleName' not found. Creating rule..."
+        Write-Output "Firewall rule '$ruleName' not found. Creating rule..."
 
         New-NetFirewallRule -DisplayName $ruleName `
             -Direction Inbound `
@@ -66,12 +66,12 @@ try {
             -LocalPort 5000 `
             -Action Allow
 
-        Write-Output "✅ Firewall rule '$ruleName' created successfully."
+        Write-Output "Firewall rule '$ruleName' created successfully."
     } else {
-        Write-Output "🛡️ Firewall rule '$ruleName' already exists. No action taken."
+        Write-Output "Firewall rule '$ruleName' already exists. No action taken."
     }
 } catch {
-    Write-Output "❌ Unexpected error while managing firewall rule: $_"
+    Write-Output "Unexpected error while managing firewall rule: $_"
 }
 
 
