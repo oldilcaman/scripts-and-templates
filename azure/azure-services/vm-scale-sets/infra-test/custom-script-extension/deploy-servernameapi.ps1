@@ -1,108 +1,96 @@
-
 Start-Transcript -Path "C:\cse-log.txt" -Append
 
-# Stop the process if it's running
+# --- Stop Existing ServerNameApi Process ---
 try {
     $pidFile = "C:\ServerNameApi\dotnet.pid"
-
     if (Test-Path $pidFile) {
         $targetPid = Get-Content $pidFile
         try {
             Stop-Process -Id $targetPid -Force
-            Write-Output "Process with ID $targetPid was successfully stopped."
-
-            # Delete the PID file
+            Write-Output "✅ Process with ID $targetPid stopped."
             Remove-Item $pidFile -Force
-            Write-Output "PID file deleted."
-
+            Write-Output "🗑️ PID file deleted."
         } catch {
-            Write-Output "Process with ID $targetPid could not be stopped. It may not exist or is already terminated."
+            Write-Output "⚠️ Could not stop process with ID ${targetPid}: $_"
         }
     } else {
-        Write-Output "PID file not found. No process to stop."
+        Write-Output "📁 No PID file found. No process to stop."
     }
 } catch {
-    Write-Output "Unexpected error occurred whild trying to stop the process: $_"
+    Write-Output "❌ Error while stopping process: $_"
 }
 
-# Install .net
+# --- Install .NET SDK if Missing ---
 try {
     $targetVersion = "9.0.304"
     $dotnetPath = "C:\Program Files\dotnet\dotnet.exe"
+    $installerPath = "C:\dotnet-sdk-installer.exe"
+    $dotnetInstalled = $false
 
     if (Test-Path $dotnetPath) {
         $installedVersions = & $dotnetPath --list-sdks 2>$null | ForEach-Object {
             ($_ -split "\s+\[")[0]
         }
-
         if ($installedVersions -contains $targetVersion) {
-            Write-Output ".NET SDK version $targetVersion is already installed. Skipping installation."
-        } else {
-            Write-Output "Installing .NET SDK version $targetVersion..."
-            $dotnetSdkInstaller = "https://builds.dotnet.microsoft.com/dotnet/Sdk/$targetVersion/dotnet-sdk-$targetVersion-win-x64.exe"
-            $installerPath = "C:\dotnet-sdk-installer.exe"
-
-            Invoke-WebRequest -Uri $dotnetSdkInstaller -OutFile $installerPath -ErrorAction Stop
-            Start-Process $installerPath -ArgumentList "/quiet" -Wait
-            Write-Output "Installation of .NET SDK $targetVersion completed."
+            Write-Output "✅ .NET SDK $targetVersion already installed."
+            $dotnetInstalled = $true
         }
-    } else {
-        Write-Output "dotnet.exe not found. Installing .NET SDK version $targetVersion..."
-        $dotnetSdkInstaller = "https://builds.dotnet.microsoft.com/dotnet/Sdk/$targetVersion/dotnet-sdk-$targetVersion-win-x64.exe"
-        $installerPath = "C:\dotnet-sdk-installer.exe"
+    }
 
+    if (-not $dotnetInstalled) {
+        Write-Output "📦 Installing .NET SDK $targetVersion..."
+        $dotnetSdkInstaller = "https://builds.dotnet.microsoft.com/dotnet/Sdk/$targetVersion/dotnet-sdk-$targetVersion-win-x64.exe"
         Invoke-WebRequest -Uri $dotnetSdkInstaller -OutFile $installerPath -ErrorAction Stop
         $process = Start-Process $installerPath -ArgumentList "/quiet" -Wait -PassThru
-        Write-Output "Installer exited with code: $($process.ExitCode)"
+        Write-Output "✅ Installer exited with code: $($process.ExitCode)"
     }
 } catch {
-    Write-Output "Unexpected error occurred during .NET installation: $_"
+    Write-Output "❌ Error during .NET SDK installation: $_"
 }
 
-# Open the port in the firewall
+# --- Open Port 5000 in Windows Firewall ---
 try {
     $ruleName = "Allow Port 5000 for ServerNameApi"
     $existingRule = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
-
     if ($null -eq $existingRule) {
-        Write-Output "Firewall rule '$ruleName' not found. Creating rule..."
-
+        Write-Output "🔐 Creating firewall rule for port 5000..."
         New-NetFirewallRule -DisplayName $ruleName `
             -Direction Inbound `
             -Protocol TCP `
             -LocalPort 5000 `
             -Action Allow
-
-        Write-Output "Firewall rule '$ruleName' created successfully."
+        Write-Output "✅ Firewall rule created."
     } else {
-        Write-Output "Firewall rule '$ruleName' already exists. No action taken."
+        Write-Output "🛡️ Firewall rule already exists. Skipping."
     }
 } catch {
-    Write-Output "Unexpected error while managing firewall rule: $_"
+    Write-Output "❌ Error managing firewall rule: $_"
 }
 
-
+# --- Download and Launch ServerNameApi ---
 try {
-  
-    # Download published ServerNameAPI zip from Azure Storage or GitHub
-    Invoke-WebRequest -Uri "https://github.com/peterlil/script-and-templates/releases/download/vmss-scale-sets-ServerNameApi-v0.1/ServerNameApi-v0.1.zip" -OutFile "C:\ServerNameApi.zip"
-    Expand-Archive -Path "C:\ServerNameApi.zip" -DestinationPath "C:\ServerNameApi" -Force
-    # Start the API (as a background process)
-    $proc = Start-Process "C:\Program Files\dotnet\dotnet.exe" -ArgumentList "C:\ServerNameApi\ServerNameApi.dll" -WindowStyle Hidden -PassThru
-    $proc.Id | Out-File "C:\ServerNameApi\dotnet.pid"
-    # Optional: log that the process was started
-    Write-Output "ServerNameApi started, waiting for initialization..."
-    # Add a short delay to ensure the process has time to spin up
+    $zipUrl = "https://github.com/peterlil/script-and-templates/releases/download/vmss-scale-sets-ServerNameApi-v0.1/ServerNameApi-v0.1.zip"
+    $zipPath = "C:\ServerNameApi.zip"
+    $extractPath = "C:\ServerNameApi"
+
+    Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -ErrorAction Stop
+    Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+
+    $proc = Start-Process "C:\Program Files\dotnet\dotnet.exe" `
+        -ArgumentList "$extractPath\ServerNameApi.dll" `
+        -WindowStyle Hidden -PassThru
+
+    $proc.Id | Out-File "$extractPath\dotnet.pid"
+    Write-Output "🚀 ServerNameApi started with PID $($proc.Id). Waiting for initialization..."
     Start-Sleep -Seconds 10
-    $proc = Get-Process -Name "dotnet" -ErrorAction SilentlyContinue
-    if ($proc) {
-        Write-Output "dotnet process is running."
+
+    if (-not $proc.HasExited) {
+        Write-Output "✅ dotnet process is running."
     } else {
-        Write-Error "dotnet process failed to start."
+        Write-Output "❌ dotnet process exited prematurely."
     }
 } catch {
-    Write-Error ("Script failed: " + $_)
+    Write-Output "❌ Error launching ServerNameApi: $_"
 }
-
 
 Stop-Transcript
