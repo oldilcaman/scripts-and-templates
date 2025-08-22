@@ -99,7 +99,7 @@ try {
     }
 
 } catch {
-    Write-Error "Script failed: $_"
+    Write-Error ("Script failed: " + $_)
 }
 
 
