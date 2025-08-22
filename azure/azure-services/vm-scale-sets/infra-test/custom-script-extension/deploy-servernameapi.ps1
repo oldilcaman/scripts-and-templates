@@ -28,28 +28,35 @@ try {
 # Install .net
 try {
     $targetVersion = "9.0.304"
-    $installedVersions = & dotnet --list-sdks 2>$null | ForEach-Object {
-        ($_ -split "\s+\[")[0]
-    }
+    $dotnetPath = "C:\Program Files\dotnet\dotnet.exe"
 
-    if ($installedVersions -contains $targetVersion) {
-        Write-Output ".NET SDK version $targetVersion is already installed. Skipping installation."
-    } else {
-        Write-Output "Installing .NET SDK version $targetVersion..."
+    if (Test-Path $dotnetPath) {
+        $installedVersions = & $dotnetPath --list-sdks 2>$null | ForEach-Object {
+            ($_ -split "\s+\[")[0]
+        }
 
-        $dotnetSdkInstaller = "https://builds.dotnet.microsoft.com/dotnet/Sdk/$targetVersion/dotnet-sdk-$targetVersion-win-x64.exe"
-        $installerPath = "C:\dotnet-sdk-installer.exe"
+        if ($installedVersions -contains $targetVersion) {
+            Write-Output ".NET SDK version $targetVersion is already installed. Skipping installation."
+        } else {
+            Write-Output "Installing .NET SDK version $targetVersion..."
+            $dotnetSdkInstaller = "https://builds.dotnet.microsoft.com/dotnet/Sdk/$targetVersion/dotnet-sdk-$targetVersion-win-x64.exe"
+            $installerPath = "C:\dotnet-sdk-installer.exe"
 
-        try {
             Invoke-WebRequest -Uri $dotnetSdkInstaller -OutFile $installerPath -ErrorAction Stop
             Start-Process $installerPath -ArgumentList "/quiet" -Wait
             Write-Output "Installation of .NET SDK $targetVersion completed."
-        } catch {
-            Write-Output "Failed to download or install .NET SDK ${targetVersion}: $_"
         }
+    } else {
+        Write-Output "dotnet.exe not found. Installing .NET SDK version $targetVersion..."
+        $dotnetSdkInstaller = "https://builds.dotnet.microsoft.com/dotnet/Sdk/$targetVersion/dotnet-sdk-$targetVersion-win-x64.exe"
+        $installerPath = "C:\dotnet-sdk-installer.exe"
+
+        Invoke-WebRequest -Uri $dotnetSdkInstaller -OutFile $installerPath -ErrorAction Stop
+        $process = Start-Process $installerPath -ArgumentList "/quiet" -Wait -PassThru
+        Write-Output "Installer exited with code: $($process.ExitCode)"
     }
 } catch {
-    Write-Output "Unexpected error occurred: $_"
+    Write-Output "Unexpected error occurred during .NET installation: $_"
 }
 
 # Open the port in the firewall
