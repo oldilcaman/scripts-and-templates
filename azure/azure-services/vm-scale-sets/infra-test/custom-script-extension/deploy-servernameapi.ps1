@@ -84,9 +84,10 @@ try {
 try {
   
     # Download published ServerNameAPI zip from Azure Storage or GitHub
-    Invoke-WebRequest -Uri "https://github.com/peterlil/script-and-templates/releases/download/vmss-scale-sets-ServerNameApi-v0.1/ServerNameApi-v0.1.zip" -OutFile "C:\ServerNameApi.zip"
+    Invoke-WebRequest -Uri "https://github.com/peterlil/script-and-templates/releases/download/vmss-scale-sets-ServerNameApi/ServerNameApi-v0.2.zip" -OutFile "C:\ServerNameApi.zip"
     Expand-Archive -Path "C:\ServerNameApi.zip" -DestinationPath "C:\ServerNameApi" -Force
     # Start the API (as a background process)
+    $env:ASPNETCORE_URLS="http://0.0.0.0:5000"
     $proc = Start-Process "C:\Program Files\dotnet\dotnet.exe" -ArgumentList "C:\ServerNameApi\ServerNameApi.dll" -WindowStyle Hidden -PassThru
     $proc.Id | Out-File "C:\ServerNameApi\dotnet.pid"
     # Optional: log that the process was started

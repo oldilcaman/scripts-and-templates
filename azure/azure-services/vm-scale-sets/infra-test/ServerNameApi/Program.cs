@@ -21,6 +21,9 @@ app.MapGet("/servername", () =>
 })
 .WithName("GetServerName");
 
+app.MapGet("/health", () => Results.Ok("Healthy"))
+   .WithName("HealthProbe");
+
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
