@@ -27,6 +27,12 @@ try {
         Write-Error "dotnet process failed to start."
     }
 
+    New-NetFirewallRule -DisplayName "Allow Port 5000 for ServerNameApi" `
+        -Direction Inbound `
+        -Protocol TCP `
+        -LocalPort 5000 `
+        -Action Allow
+
 } catch {
     Write-Error "Script failed: $_"
 }
