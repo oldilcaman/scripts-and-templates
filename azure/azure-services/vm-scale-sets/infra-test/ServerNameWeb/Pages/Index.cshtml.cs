@@ -26,13 +26,16 @@ public class IndexModel : PageModel
 
     public async Task<IActionResult> OnPostAsync()
     {
+       // ...existing code...
         if (!string.IsNullOrWhiteSpace(Fqdn))
         {
-            var client = _httpClientFactory.CreateClient();
+            // Create a new HttpClientHandler and HttpClient for each request
+            using var handler = new HttpClientHandler();
+            using var client = new HttpClient(handler);
+
             try
             {
-                // Use http for demo, adjust as needed
-                var url = $"http://{Fqdn}:5222/servername";
+                var url = $"http://{Fqdn}/servername";
                 ServerName = await client.GetStringAsync(url);
             }
             catch (Exception ex)
@@ -40,6 +43,7 @@ public class IndexModel : PageModel
                 ServerName = $"Error: {ex.Message}";
             }
         }
+        // ...existing code...
         return Page();
     }
 
